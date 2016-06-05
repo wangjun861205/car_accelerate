@@ -5,6 +5,7 @@ from copy import deepcopy
 import matplotlib.pyplot as plt
 import numpy as np
 from bisect import bisect
+import multiprocessing
 
 torqueCurve=[]
 powerCurve=[]
@@ -144,7 +145,8 @@ class Engine():
 #speed 车速
 #isTopPowerShift 换挡策略，True:最高功率转速区间换挡，False:最大扭矩转速区间换挡
 class Car():
-    def __init__(self,transmission,engine,weight,cw,tireArgument='235/40/18',speed=0,isTopPowerShift=False):
+    def __init__(self,name,transmission,engine,weight,cw,tireArgument='235/40/18',speed=0,isTopPowerShift=False):
+        self.name=name
         tireWidth,tireAspectRatio,wheelSize=[ int(x) for x in tireArgument.split('/') ]
         self.transmission=transmission
         self.engine=engine
@@ -235,6 +237,51 @@ class Car():
             elif self.engine.rpm<self.engine.maxTorqueRpmRange[0] and self.transmission.nowGear>1:
                 self.downshift()
 
+    def show_figure_edition2(self):
+        speedArray=np.array(self.speedRecord)
+        torqueArray=np.array(self.torqueRecord)
+        powerArray=np.array(self.powerRecord)
+        rpmArray=np.array(self.rpmRecord)
+        timeArray=np.array(self.timeRecord)
+        powerCurveArray=np.array([ p for p in self.engine.powerCurve ])
+        torqueCurveArray=np.array([ t for t in self.engine.torqueCurve ])
+        rpmCurveArray=np.arange(0,len(self.engine.powerCurve),1)
+
+        fig=plt.figure()
+        axSpeed=fig.add_subplot(321)
+        axTorque=fig.add_subplot(322)
+        axPower=fig.add_subplot(323)
+        axRpm=fig.add_subplot(324)
+        axPowerCurve=fig.add_subplot(325)
+        axTorqueCurve=fig.add_subplot(326)
+        axSpeed.plot(timeArray,speedArray)
+        axTorque.plot(timeArray,torqueArray)
+        axPower.plot(timeArray,powerArray)
+        axRpm.plot(timeArray,rpmArray)
+        axPowerCurve.plot(rpmCurveArray,powerCurveArray)
+        axTorqueCurve.plot(rpmCurveArray,torqueCurveArray)
+        axSpeed.set_xlabel('time s')
+        axSpeed.set_ylabel('speed km/h')
+        axTorque.set_xlabel('time s')
+        axTorque.set_ylabel('torque Nm')
+        axPower.set_xlabel('time s')
+        axPower.set_ylabel('power kw')
+        axRpm.set_xlabel('time s')
+        axRpm.set_ylabel('rpm')
+        axPowerCurve.set_xlabel('rpm')
+        axPowerCurve.set_ylabel('power kw')
+        axTorqueCurve.set_xlabel('rpm')
+        axTorqueCurve.set_ylabel('torque Nm')
+        fig.suptitle('{}'.format(self.name),fontsize=20)
+        plt.show()
+
+        
+
+    def show_result_edition2(self):
+        print('{} 时速:{}km/h,用时:{}s'.format(self.name,round(self.speedRecord[-1]),round(self.timeRecord[-1],2)),end=' ')
+        print('最大功率:{0}kw 最大功率转速:{1}rpm 最大扭矩:{2}Nm'.format(round(self.engine.maxPower),round(self.engine.powerCurve.index(self.engine.maxPower)),round(self.engine.maxTorque)))
+        self.show_figure_edition2()
+
     #Car类加速方法 
     def accelerate(self,endSpeed,printDetail=False):
         self.engine.rpm=startRpm
@@ -259,56 +306,13 @@ class Car():
                 self.time=0
                 self.speed=0
                 self.transmission.nowGear=1
+                self.show_result_edition2()
                 return
+        self.time=0
+        self.speed=0
+        self.transmission.nowGear=1
+        self.show_result_edition2()
 
-def show_car_info(car,carNumber):
-    print('{0}号车最大功率:{1}kw {0}号车最大功率转速:{2}rpm {0}号车最大扭矩:{3}Nm'.format(carNumber,round(car.engine.maxPower),round(car.engine.powerCurve.index(car.engine.maxPower)),round(car.engine.maxTorque)))
-    
-def show_result_edition(*cars):
-    print('时速:{}km/h'.format(round(cars[0].speedRecord[-1])),end=' ')
-    for c in cars:
-        print('用时:{}s'.format(round(c.timeRecord[-1],2)),end=' ')
-    print('\n')
-    for i in range(len(cars)):
-        show_car_info(cars[i],i+1)
-
-def show_figure(car):
-    speedArray=np.array(car.speedRecord)
-    torqueArray=np.array(car.torqueRecord)
-    powerArray=np.array(car.powerRecord)
-    rpmArray=np.array(car.rpmRecord)
-    timeArray=np.array(car.timeRecord)
-    powerCurveArray=np.array([ p for p in car.engine.powerCurve ])
-    torqueCurveArray=np.array([ t for t in car.engine.torqueCurve ])
-    rpmCurveArray=np.arange(0,len(car.engine.powerCurve),1)
-
-    fig=plt.figure()
-    axSpeed=fig.add_subplot(321)
-    axTorque=fig.add_subplot(322)
-    axPower=fig.add_subplot(323)
-    axRpm=fig.add_subplot(324)
-    axPowerCurve=fig.add_subplot(325)
-    axTorqueCurve=fig.add_subplot(326)
-    axSpeed.plot(timeArray,speedArray)
-    axTorque.plot(timeArray,torqueArray)
-    axPower.plot(timeArray,powerArray)
-    axRpm.plot(timeArray,rpmArray)
-    axPowerCurve.plot(rpmCurveArray,powerCurveArray)
-    axTorqueCurve.plot(rpmCurveArray,torqueCurveArray)
-    axSpeed.set_xlabel('time s')
-    axSpeed.set_ylabel('speed km/h')
-    axTorque.set_xlabel('time s')
-    axTorque.set_ylabel('torque Nm')
-    axPower.set_xlabel('time s')
-    axPower.set_ylabel('power kw')
-    axRpm.set_xlabel('time s')
-    axRpm.set_ylabel('rpm')
-    axPowerCurve.set_xlabel('rpm')
-    axPowerCurve.set_ylabel('power kw')
-    axTorqueCurve.set_xlabel('rpm')
-    axTorqueCurve.set_ylabel('torque Nm')
-    fig.suptitle('car curve',fontsize=18)
-    plt.show()
 
 if __name__=='__main__':
     gears7=[9,8,7,6,5,4,3]
@@ -317,10 +321,8 @@ if __name__=='__main__':
     EA888=Engine(((170,1000),(280,1800),(280,5000),(190,6800)))
     DCT7G=Transmission(gears7,efficiency=0.9)
     AT6G=Transmission(gears6,efficiency=0.9)
-    A45AMG=Car(DCT7G,M133,weight=1585,cw=0.27,tireArgument='235/40/18',isTopPowerShift=True)
-    Tiguan=Car(AT6G,EA888,weight=1720,cw=0.3,tireArgument='235/55/17',isTopPowerShift=True)
-    A45AMG.accelerate(200)
-    Tiguan.accelerate(200)
-    show_result_edition(A45AMG,Tiguan)
-    show_figure(A45AMG)
-    show_figure(Tiguan)
+    A45AMG=Car('A45AMG',DCT7G,M133,weight=1585,cw=0.27,tireArgument='235/40/18',isTopPowerShift=True)
+    Tiguan=Car('Tiguan',AT6G,EA888,weight=1720,cw=0.3,tireArgument='235/55/17',isTopPowerShift=True)
+    for c in (A45AMG,Tiguan):
+        p=multiprocessing.Process(target=c.accelerate,args=(200,))
+        p.start()
